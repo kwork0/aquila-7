@@ -1,10 +1,12 @@
 // =====================================================================
 // AQUILA-7 showcase — scroll-driven 3D viewer
-// Motion model follows Apple's fluid-interface principles:
-//   - critically-damped springs (no canned easing) driven by scroll
-//   - the model is directly draggable, 1:1 with the pointer
-//   - on release, velocity carries through into the spring (no "seam")
-//   - drag past the natural pitch range rubber-bands instead of hard-stopping
+// - critically-damped springs drive the flight path (see springStep)
+// - the model is directly draggable, 1:1 with the pointer, velocity
+//   carries through into the spring on release
+// - the whole viewport (background + aircraft material) inverts between
+//   a dark and light theme depending on which text section is active
+// - any mesh named with "rotor" or "prop" in it spins continuously —
+//   drop a rigged rotor model in and it'll be picked up automatically
 // Swap 'my_aircraft.glb' below for your exported model filename.
 // =====================================================================
 
@@ -27,7 +29,8 @@ function sizeRenderer() {
 }
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0a0a0a);
+const bgColor = { r: 0, g: 0, b: 0 }; // crossfaded by gsap, applied to scene.background each tick
+scene.background = new THREE.Color(0, 0, 0);
 
 const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
 camera.position.set(0, 0.3, 6);
@@ -37,39 +40,66 @@ const key = new THREE.DirectionalLight(0xffffff, 0.35);
 key.position.set(3, 4, 5);
 scene.add(key);
 
-// ---------- fresnel glow material, pure grayscale, intensity is scroll-driven ----------
-const glowMaterial = new THREE.ShaderMaterial({
-  uniforms: { energy: { value: 0.8 } },
-  vertexShader: `
-    varying vec3 vNormal;
-    varying vec3 vViewPosition;
-    void main() {
-      vNormal = normalize(normalMatrix * normal);
-      vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-      vViewPosition = -mvPosition.xyz;
-      gl_Position = projectionMatrix * mvPosition;
-    }
-  `,
-  fragmentShader: `
-    varying vec3 vNormal;
-    varying vec3 vViewPosition;
-    uniform float energy;
-    void main() {
-      vec3 normal = normalize(vNormal);
-      vec3 viewDir = normalize(vViewPosition);
-      float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 2.0);
-      float a = (fresnel + 0.06) * energy;
-      gl_FragColor = vec4(vec3(1.0) * a, a);
-    }
-  `,
-  transparent: true,
-  blending: THREE.AdditiveBlending,
-  side: THREE.DoubleSide,
-  depthWrite: false,
-});
+// ---------- fresnel glow materials — one per theme, swapped on the meshes at runtime ----------
+function makeFresnelMaterial(rgb, blending) {
+  return new THREE.ShaderMaterial({
+    uniforms: { energy: { value: 0.8 }, glowColor: { value: new THREE.Color(rgb) } },
+    vertexShader: `
+      varying vec3 vNormal;
+      varying vec3 vViewPosition;
+      void main() {
+        vNormal = normalize(normalMatrix * normal);
+        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+        vViewPosition = -mvPosition.xyz;
+        gl_Position = projectionMatrix * mvPosition;
+      }
+    `,
+    fragmentShader: `
+      varying vec3 vNormal;
+      varying vec3 vViewPosition;
+      uniform float energy;
+      uniform vec3 glowColor;
+      void main() {
+        vec3 normal = normalize(vNormal);
+        vec3 viewDir = normalize(vViewPosition);
+        float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 2.0);
+        float a = (fresnel + 0.06) * energy;
+        gl_FragColor = vec4(glowColor, a);
+      }
+    `,
+    transparent: true,
+    blending,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+  });
+}
+// dark theme: white glow, additive — glass x-ray look on black
+const darkMaterial = makeFresnelMaterial(0xffffff, THREE.AdditiveBlending);
+// light theme: black glow, normal blending — inverted silhouette on white
+const lightMaterial = makeFresnelMaterial(0x000000, THREE.NormalBlending);
+
+let currentTheme = 'dark';
+let meshList = []; // every mesh in the aircraft, so we can swap materials on theme change
+
+function applyTheme(theme) {
+  if (theme === currentTheme) return;
+  currentTheme = theme;
+  const mat = theme === 'light' ? lightMaterial : darkMaterial;
+  meshList.forEach((m) => (m.material = mat));
+
+  viewportEl.classList.toggle('light-theme', theme === 'light');
+  const target = theme === 'light' ? { r: 255, g: 255, b: 255 } : { r: 0, g: 0, b: 0 };
+  gsap.to(bgColor, {
+    r: target.r, g: target.g, b: target.b,
+    duration: 0.7,
+    ease: 'power2.out',
+    onUpdate: () => scene.background.setRGB(bgColor.r / 255, bgColor.g / 255, bgColor.b / 255),
+  });
+}
 
 // ---------- model loading (with a placeholder if the glb isn't there yet) ----------
 let aircraft;
+const rotors = []; // meshes/groups whose name contains "rotor" or "prop" — spun continuously in animate()
 const loadingEl = document.getElementById('loading');
 const pctEl = document.getElementById('loading-pct');
 const labelEl = document.getElementById('loading-label');
@@ -81,17 +111,17 @@ function finishLoading() {
     duration: 0.8,
     onComplete: () => (loadingEl.style.display = 'none'),
   });
-  // "materialize, don't just fade" — the HUD arrives as a real surface, not a plain opacity toggle
   telemetryEl.classList.add('materialized');
 }
 
 function placeholderJet() {
   const group = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.ConeGeometry(0.35, 2.2, 12), glowMaterial);
+  const body = new THREE.Mesh(new THREE.ConeGeometry(0.35, 2.2, 12), darkMaterial);
   body.rotation.x = Math.PI / 2;
-  const wing = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.06, 0.55), glowMaterial);
+  const wing = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.06, 0.55), darkMaterial);
   wing.position.z = 0.1;
   group.add(body, wing);
+  meshList = [body, wing];
   return group;
 }
 
@@ -103,8 +133,16 @@ loader.load(
   'my_aircraft.glb',
   (gltf) => {
     aircraft = gltf.scene;
+    meshList = [];
     aircraft.traverse((child) => {
-      if (child.isMesh) child.material = glowMaterial;
+      if (child.isMesh) {
+        child.material = darkMaterial;
+        meshList.push(child);
+      }
+      const name = (child.name || '').toLowerCase();
+      if (name.includes('rotor') || name.includes('prop')) {
+        rotors.push(child);
+      }
     });
     normalizeAndAdd(aircraft);
     finishLoading();
@@ -137,27 +175,25 @@ function normalizeAndAdd(obj) {
 // ---------- shot list: one per section, a deliberate flight move rather than a spin ----------
 const shots = [
   { pos: { x: 0, y: 0, z: 0 }, rot: { x: 0, y: 0, z: 0 }, cam: { x: 0, y: 0.3, z: 6 } },
-  { pos: { x: 0.35, y: -0.1, z: 0 }, rot: { x: -0.22, y: 1.1, z: 0.35 }, cam: { x: 0.7, y: 0.55, z: 4.7 } },
-  { pos: { x: -0.3, y: 0.15, z: 0 }, rot: { x: 0.1, y: 2.3, z: -0.32 }, cam: { x: -0.55, y: 0.1, z: 4.0 } },
-  { pos: { x: 0, y: -0.05, z: 0.2 }, rot: { x: 0, y: 3.55, z: 0.08 }, cam: { x: 0, y: 0.15, z: 2.5 } },
+  { pos: { x: 0.3, y: -0.05, z: 0 }, rot: { x: -0.1, y: 0.7, z: 0.2 }, cam: { x: 0.5, y: 0.4, z: 5.0 } },
+  { pos: { x: 0.35, y: -0.1, z: 0 }, rot: { x: -0.22, y: 1.4, z: 0.35 }, cam: { x: 0.7, y: 0.55, z: 4.7 } },
+  { pos: { x: -0.3, y: 0.15, z: 0.1 }, rot: { x: 0.06, y: 2.1, z: -0.28 }, cam: { x: -0.5, y: 0.2, z: 4.2 } },
+  { pos: { x: -0.3, y: 0.15, z: 0 }, rot: { x: 0.1, y: 2.9, z: -0.32 }, cam: { x: -0.55, y: 0.1, z: 4.0 } },
+  { pos: { x: 0, y: -0.05, z: 0.2 }, rot: { x: 0, y: 3.7, z: 0.08 }, cam: { x: 0, y: 0.15, z: 2.5 } },
   { pos: { x: 0, y: 0, z: 0 }, rot: { x: 0, y: 4.5, z: 0 }, cam: { x: 0, y: 0.4, z: 5.3 } },
 ];
 
-// scroll-derived target — the spring always chases this
 const target = {
   pos: { x: 0, y: 0, z: 0 },
   rot: { x: 0, y: 0, z: 0 },
   cam: { x: 0, y: 0.3, z: 6 },
 };
 
-// ---------- tiny critically-damped spring system (value + velocity per channel) ----------
-// This is the actual physics behind Apple's "damping 1.0" default: no overshoot,
-// but velocity is a real state, so a moving value can be redirected without a seam.
+// ---------- tiny critically-damped spring system ----------
 function makeSpring(initial) {
   return { value: initial, velocity: 0 };
 }
 function springStep(spring, target, dt, omega) {
-  // analytic critically-damped integration (stable at any frame rate)
   const x = spring.value - target;
   const v = spring.velocity;
   const decay = Math.exp(-omega * dt);
@@ -183,20 +219,12 @@ const springs = {
   rotX: makeSpring(0), rotY: makeSpring(0), rotZ: makeSpring(0),
   camX: makeSpring(0), camY: makeSpring(0.3), camZ: makeSpring(6),
 };
-const OMEGA_POSITION = 9;   // response ~0.4s, matches Apple's "move/reposition" default
+const OMEGA_POSITION = 9;
 const OMEGA_ROTATION = 7;
 
 // ---------- direct manipulation: grab and spin the model, 1:1 with the pointer ----------
-const drag = {
-  active: false,
-  lastX: 0,
-  lastY: 0,
-  lastTime: 0,
-  baseRotY: 0,
-  offsetY: 0, // extra yaw added on top of the scroll target, decays back out via the spring after release
-  offsetX: 0, // extra pitch, rubber-banded near the shot's natural limit
-};
-const PITCH_LIMIT = 0.5; // how far off the current shot's pitch feels "natural" before resisting
+const drag = { active: false, lastX: 0, lastY: 0, lastTime: 0, offsetY: 0, offsetX: 0 };
+const PITCH_LIMIT = 0.5;
 
 if (!prefersReducedMotion) {
   canvas.style.cursor = 'grab';
@@ -224,8 +252,6 @@ if (!prefersReducedMotion) {
       ? Math.sign(rawPitchOffset) * PITCH_LIMIT + rubberband(rawPitchOffset - Math.sign(rawPitchOffset) * PITCH_LIMIT, 0.6)
       : rawPitchOffset;
 
-    // write straight into the spring's value AND velocity — this is the 1:1 tracking,
-    // and it's what makes release feel continuous instead of snapping to a new animation
     springs.rotY.value = target.rot.y + drag.offsetY;
     springs.rotY.velocity = (dx * 0.010) / dt;
     springs.rotX.value = target.rot.x + drag.offsetX;
@@ -240,8 +266,6 @@ if (!prefersReducedMotion) {
     if (!drag.active) return;
     drag.active = false;
     canvas.style.cursor = 'grab';
-    // let the offsets relax back to 0 over the next few frames rather than resetting instantly —
-    // the spring already carries the release velocity, so this reads as a smooth hand-off
     drag.offsetY = 0;
     drag.offsetX = 0;
   });
@@ -251,7 +275,7 @@ if (!prefersReducedMotion) {
 const tmAlt = document.getElementById('tm-alt');
 const tmMoist = document.getElementById('tm-moist');
 const tmStatus = document.getElementById('tm-status');
-const statusStages = ['STANDBY', 'ASCENDING', 'SCANNING', 'DISPERSING', 'RETURNING'];
+const statusStages = ['STANDBY', 'ASCENDING', 'SCANNING', 'DISPERSING', 'RETURNING', 'RETURNING', 'STANDBY'];
 
 ScrollTrigger.create({
   trigger: 'main',
@@ -277,13 +301,26 @@ ScrollTrigger.create({
     target.cam.y = lerp(a.cam.y, b.cam.y, localT);
     target.cam.z = lerp(a.cam.z, b.cam.z, localT);
 
-    glowMaterial.uniforms.energy.value = 0.75 + p * 0.55;
+    const energy = 0.75 + p * 0.55;
+    darkMaterial.uniforms.energy.value = energy;
+    lightMaterial.uniforms.energy.value = energy;
 
     tmAlt.textContent = Math.round(p * 120).toString().padStart(3, '0');
     tmMoist.textContent = Math.round(20 + p * 60).toString().padStart(2, '0');
     const stageIndex = Math.min(statusStages.length - 1, Math.floor(p * statusStages.length));
     tmStatus.textContent = statusStages[stageIndex];
   },
+});
+
+// ---------- theme switching: whichever section is centered wins ----------
+document.querySelectorAll('.panel[data-theme]').forEach((panel) => {
+  ScrollTrigger.create({
+    trigger: panel,
+    start: 'top center',
+    end: 'bottom center',
+    onEnter: () => applyTheme(panel.dataset.theme),
+    onEnterBack: () => applyTheme(panel.dataset.theme),
+  });
 });
 
 // ---------- reveal-on-scroll for the right-hand text column ----------
@@ -298,7 +335,7 @@ const io = new IntersectionObserver(
 );
 revealEls.forEach((el) => io.observe(el));
 
-// ---------- render loop: springs, not canned easing ----------
+// ---------- render loop ----------
 let lastFrame = performance.now();
 function animate() {
   requestAnimationFrame(animate);
@@ -313,8 +350,6 @@ function animate() {
   springStep(springs.camY, target.cam.y, dt, OMEGA_POSITION);
   springStep(springs.camZ, target.cam.z, dt, OMEGA_POSITION);
 
-  // rotation springs only chase the scroll target when the user isn't actively dragging —
-  // while dragging, pointermove writes value/velocity directly (see above)
   if (!drag.active) {
     springStep(springs.rotX, target.rot.x, dt, OMEGA_ROTATION);
     springStep(springs.rotY, target.rot.y, dt, OMEGA_ROTATION);
@@ -325,6 +360,9 @@ function animate() {
   rig.rotation.set(springs.rotX.value, springs.rotY.value, springs.rotZ.value);
   camera.position.set(springs.camX.value, springs.camY.value, springs.camZ.value);
   camera.lookAt(rig.position);
+
+  // spin any rotor/prop meshes continuously, independent of the flight-path animation
+  rotors.forEach((r) => { r.rotation.y += dt * 18; });
 
   renderer.render(scene, camera);
 }
