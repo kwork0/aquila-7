@@ -11,7 +11,8 @@
 </head>
 <body>
 
-  <!-- Fixed WebGL viewport, left half of the screen on desktop -->
+  <!-- Fixed WebGL viewport, left half of the screen on desktop. Its background and the
+       aircraft material both invert to match whichever text section is currently active. -->
   <div id="viewport">
     <canvas id="scene"></canvas>
     <div id="vignette"></div>
@@ -26,19 +27,25 @@
     </div>
   </div>
 
-  <!-- Scrolling text column, right half on desktop -->
+  <!-- Scrolling text column, right half on desktop. Each section declares its own theme. -->
   <main>
 
-    <section class="panel hero">
+    <section class="panel hero theme-dark" data-theme="dark">
       <div class="reveal">
-        <p class="eyebrow">FIELD DEPLOYMENT PLATFORM</p>
+        <p class="eyebrow">INTRODUCING</p>
         <h1>AQUILA-7</h1>
-        <p class="subhead">An autonomous response system built to find the driest ground first — simulated in Roblox, flown in the real world.</p>
         <div class="scroll-cue">SCROLL<span class="arrow">↓</span></div>
       </div>
     </section>
 
-    <section class="panel sequence">
+    <section class="panel slogan theme-light" data-theme="light">
+      <div class="reveal">
+        <h2 class="slogan-text">Real time.<br>Real weather tracking.<br>Real for the Shenandoah Valley.</h2>
+        <p class="body-text">Built for farmers who need to know what's happening in the field right now — not yesterday's forecast.</p>
+      </div>
+    </section>
+
+    <section class="panel sequence theme-dark" data-theme="dark">
       <div class="reveal">
         <p class="eyebrow">MISSION SEQUENCE</p>
         <div class="steps">
@@ -66,7 +73,37 @@
       </div>
     </section>
 
-    <section class="panel sim">
+    <section class="panel map-impact theme-light" data-theme="light">
+      <div class="reveal">
+        <p class="eyebrow">COVERAGE</p>
+        <h2>Watching the valley,<br>field by field.</h2>
+        <svg class="coverage-map" viewBox="0 0 320 220" xmlns="http://www.w3.org/2000/svg">
+          <rect x="1" y="1" width="318" height="218" fill="none" stroke="#000" stroke-opacity="0.25"/>
+          <g stroke="#000" stroke-opacity="0.15">
+            <line x1="0" y1="55" x2="320" y2="55"/>
+            <line x1="0" y1="110" x2="320" y2="110"/>
+            <line x1="0" y1="165" x2="320" y2="165"/>
+            <line x1="80" y1="0" x2="80" y2="220"/>
+            <line x1="160" y1="0" x2="160" y2="220"/>
+            <line x1="240" y1="0" x2="240" y2="220"/>
+          </g>
+          <path d="M20 190 C 60 120, 120 150, 160 90 S 260 40, 300 30" fill="none" stroke="#000" stroke-width="1.6"/>
+          <circle cx="20" cy="190" r="4" fill="#000"/>
+          <circle cx="160" cy="90" r="4" fill="#000"/>
+          <circle cx="300" cy="30" r="5" fill="#000"/>
+          <text x="300" y="20" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="9" fill="#000" opacity="0.6">GROUND STATION</text>
+          <text x="20" y="205" font-family="JetBrains Mono, monospace" font-size="9" fill="#000" opacity="0.6">FIELD A</text>
+        </svg>
+        <p class="body-text map-caption">Illustrative flight coverage — swap in a real field map once test sites are locked in.</p>
+        <div class="impact-grid">
+          <div class="impact-stat"><span class="impact-value">TBD</span><span class="impact-label">Acres monitored</span></div>
+          <div class="impact-stat"><span class="impact-value">TBD</span><span class="impact-label">Water saved</span></div>
+          <div class="impact-stat"><span class="impact-value">TBD</span><span class="impact-label">Farms partnered</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel sim theme-dark" data-theme="dark">
       <div class="reveal">
         <p class="eyebrow">SIMULATED FIRST</p>
         <h2>Every flight is rehearsed<br>before it's real.</h2>
@@ -74,7 +111,7 @@
       </div>
     </section>
 
-    <section class="panel specs">
+    <section class="panel specs theme-light" data-theme="light">
       <div class="reveal">
         <p class="eyebrow">CAPABILITIES</p>
         <div class="spec-grid">
@@ -86,7 +123,7 @@
       </div>
     </section>
 
-    <section class="panel closing">
+    <section class="panel closing theme-dark" data-theme="dark">
       <div class="reveal">
         <h2>Dry ground first.<br>Every time.</h2>
         <p class="body-text">AQUILA-7 is an ongoing build. Follow the project or dig into the simulation source below.</p>
