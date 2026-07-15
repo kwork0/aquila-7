@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AQUILA-7 — Drought Response Drone</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Fixed WebGL canvas, sits behind all scrolling content -->
+  <div id="viewport">
+    <canvas id="scene"></canvas>
+    <div id="loading">
+      <span id="loading-pct">0%</span>
+      <span id="loading-label">CALIBRATING SENSORS</span>
+    </div>
+  </div>
+
+  <!-- HUD-style telemetry readout, updates as you scroll -->
+  <div id="telemetry">
+    <div class="telemetry-row"><span>ALT</span><span id="tm-alt">000</span><span>m</span></div>
+    <div class="telemetry-row"><span>MOIST</span><span id="tm-moist">00</span><span>%</span></div>
+    <div class="telemetry-row"><span>STATUS</span><span id="tm-status">STANDBY</span></div>
+  </div>
+
+  <main>
+
+    <!-- 01 — Hero -->
+    <section class="panel hero">
+      <p class="eyebrow">FIELD DEPLOYMENT PLATFORM</p>
+      <h1>AQUILA-7</h1>
+      <p class="subhead">An autonomous response system built to find the driest ground first —<br>simulated in Roblox, flown in the real world.</p>
+      <div class="scroll-cue">SCROLL<span class="arrow">↓</span></div>
+    </section>
+
+    <!-- 02 — Mission sequence, a real ordered process -->
+    <section class="panel sequence">
+      <p class="eyebrow">MISSION SEQUENCE</p>
+      <div class="steps">
+        <div class="step">
+          <span class="step-index">01</span>
+          <h3>Deploy</h3>
+          <p>Launched from a ground station, climbing to survey altitude in under nine seconds.</p>
+        </div>
+        <div class="step">
+          <span class="step-index">02</span>
+          <h3>Scan</h3>
+          <p>Onboard sensors map soil moisture across the field, flagging the driest zones first.</p>
+        </div>
+        <div class="step">
+          <span class="step-index">03</span>
+          <h3>Disperse</h3>
+          <p>Precision release targets flagged zones only — no runoff, no waste.</p>
+        </div>
+        <div class="step">
+          <span class="step-index">04</span>
+          <h3>Return</h3>
+          <p>Auto-navigates home, logging every reading for the next flight plan.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 03 — Simulation / Roblox tie-in -->
+    <section class="panel sim">
+      <p class="eyebrow">SIMULATED FIRST</p>
+      <h2>Every flight is rehearsed<br>before it's real.</h2>
+      <p class="body-text">The full mission — deploy, scan, disperse, return — runs first inside a Roblox environment. Flight data moves over live HTTP requests between the simulation and this platform, so what you see here reflects an actual tested flight path, not a rendering.</p>
+    </section>
+
+    <!-- 04 — Spec sheet -->
+    <section class="panel specs">
+      <p class="eyebrow">CAPABILITIES</p>
+      <div class="spec-grid">
+        <div class="spec"><span class="spec-value">40<small>min</small></span><span class="spec-label">Flight endurance</span></div>
+        <div class="spec"><span class="spec-value">120<small>m</small></span><span class="spec-label">Survey altitude</span></div>
+        <div class="spec"><span class="spec-value">6<small>ha</small></span><span class="spec-label">Coverage per flight</span></div>
+        <div class="spec"><span class="spec-value">±2<small>cm</small></span><span class="spec-label">Dispersal precision</span></div>
+      </div>
+    </section>
+
+    <!-- 05 — Close -->
+    <section class="panel closing">
+      <h2>Dry ground first.<br>Every time.</h2>
+      <p class="body-text">AQUILA-7 is an ongoing build. Follow the project or dig into the simulation source below.</p>
+      <a class="cta" href="#" id="repo-link">VIEW ON GITHUB</a>
+    </section>
+
+  </main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<script src="main.js"></script>
+</body>
+</html>
