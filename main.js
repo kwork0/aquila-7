@@ -29,7 +29,6 @@ function sizeRenderer() {
 }
 
 const scene = new THREE.Scene();
-const bgColor = { r: 0, g: 0, b: 0 }; // crossfaded by gsap, applied to scene.background each tick
 scene.background = new THREE.Color(0, 0, 0);
 
 const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
@@ -40,61 +39,66 @@ const key = new THREE.DirectionalLight(0xffffff, 0.35);
 key.position.set(3, 4, 5);
 scene.add(key);
 
-// ---------- fresnel glow materials — one per theme, swapped on the meshes at runtime ----------
-function makeFresnelMaterial(rgb, blending) {
-  return new THREE.ShaderMaterial({
-    uniforms: { energy: { value: 0.8 }, glowColor: { value: new THREE.Color(rgb) } },
-    vertexShader: `
-      varying vec3 vNormal;
-      varying vec3 vViewPosition;
-      void main() {
-        vNormal = normalize(normalMatrix * normal);
-        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-        vViewPosition = -mvPosition.xyz;
-        gl_Position = projectionMatrix * mvPosition;
-      }
-    `,
-    fragmentShader: `
-      varying vec3 vNormal;
-      varying vec3 vViewPosition;
-      uniform float energy;
-      uniform vec3 glowColor;
-      void main() {
-        vec3 normal = normalize(vNormal);
-        vec3 viewDir = normalize(vViewPosition);
-        float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 2.0);
-        float a = (fresnel + 0.06) * energy;
-        gl_FragColor = vec4(glowColor, a);
-      }
-    `,
-    transparent: true,
-    blending,
-    side: THREE.DoubleSide,
-    depthWrite: false,
-  });
-}
-// dark theme: white glow, additive — glass x-ray look on black
-const darkMaterial = makeFresnelMaterial(0xffffff, THREE.AdditiveBlending);
-// light theme: black glow, normal blending — inverted silhouette on white
-const lightMaterial = makeFresnelMaterial(0x000000, THREE.NormalBlending);
+// ---------- fresnel glow material — a single material whose color continuously
+// blends from white (dark theme) to black (light theme), driven every scroll
+// tick by the same progress value that drives the flight path. Nothing here
+// snaps at a section edge; it's one continuous function of scroll position. ----------
+const glowMaterial = new THREE.ShaderMaterial({
+  uniforms: {
+    energy: { value: 0.8 },
+    mixT: { value: 0 }, // 0 = fully dark theme (white glow), 1 = fully light theme (black glow)
+  },
+  vertexShader: `
+    varying vec3 vNormal;
+    varying vec3 vViewPosition;
+    void main() {
+      vNormal = normalize(normalMatrix * normal);
+      vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+      vViewPosition = -mvPosition.xyz;
+      gl_Position = projectionMatrix * mvPosition;
+    }
+  `,
+  fragmentShader: `
+    varying vec3 vNormal;
+    varying vec3 vViewPosition;
+    uniform float energy;
+    uniform float mixT;
+    void main() {
+      vec3 normal = normalize(vNormal);
+      vec3 viewDir = normalize(vViewPosition);
+      float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 2.0);
+      float a = (fresnel + 0.06) * energy;
+      vec3 glowColor = mix(vec3(1.0), vec3(0.0), mixT);
+      gl_FragColor = vec4(glowColor, a);
+    }
+  `,
+  transparent: true,
+  blending: THREE.NormalBlending,
+  side: THREE.DoubleSide,
+  depthWrite: false,
+});
 
-let currentTheme = 'dark';
-let meshList = []; // every mesh in the aircraft, so we can swap materials on theme change
+let meshList = []; // every mesh in the aircraft — all share the one material above
 
-function applyTheme(theme) {
-  if (theme === currentTheme) return;
-  currentTheme = theme;
-  const mat = theme === 'light' ? lightMaterial : darkMaterial;
-  meshList.forEach((m) => (m.material = mat));
+// Applies the current blend value (0..1) to everything that needs to invert:
+// the material color, the scene/viewport background, the vignette, and the
+// HUD text — all as one continuous read of the same number.
+function applyThemeBlend(t) {
+  glowMaterial.uniforms.mixT.value = t;
 
-  viewportEl.classList.toggle('light-theme', theme === 'light');
-  const target = theme === 'light' ? { r: 255, g: 255, b: 255 } : { r: 0, g: 0, b: 0 };
-  gsap.to(bgColor, {
-    r: target.r, g: target.g, b: target.b,
-    duration: 0.7,
-    ease: 'power2.out',
-    onUpdate: () => scene.background.setRGB(bgColor.r / 255, bgColor.g / 255, bgColor.b / 255),
-  });
+  const bg = Math.round(255 * t); // 0 = black bg, 255 = white bg
+  scene.background.setRGB(bg / 255, bg / 255, bg / 255);
+  viewportEl.style.background = `rgb(${bg}, ${bg}, ${bg})`;
+
+  const ink = Math.round(255 * (1 - t)); // text color inverts opposite to bg
+  viewportEl.style.setProperty('--ink-1', `rgb(${ink}, ${ink}, ${ink})`);
+  viewportEl.style.setProperty('--ink-2', `rgba(${ink}, ${ink}, ${ink}, 0.62)`);
+  viewportEl.style.setProperty('--ink-3', `rgba(${ink}, ${ink}, ${ink}, 0.38)`);
+  viewportEl.style.setProperty('--panel-line', `rgba(${ink}, ${ink}, ${ink}, 0.14)`);
+  viewportEl.style.borderRightColor = `rgba(${ink}, ${ink}, ${ink}, 0.14)`;
+
+  const vignetteAlpha = lerp(0.75, 0.08, t);
+  document.getElementById('vignette').style.boxShadow = `inset 0 0 14vw 2vw rgba(0, 0, 0, ${vignetteAlpha})`;
 }
 
 // ---------- model loading (with a placeholder if the glb isn't there yet) ----------
@@ -116,9 +120,9 @@ function finishLoading() {
 
 function placeholderJet() {
   const group = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.ConeGeometry(0.35, 2.2, 12), darkMaterial);
+  const body = new THREE.Mesh(new THREE.ConeGeometry(0.35, 2.2, 12), glowMaterial);
   body.rotation.x = Math.PI / 2;
-  const wing = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.06, 0.55), darkMaterial);
+  const wing = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.06, 0.55), glowMaterial);
   wing.position.z = 0.1;
   group.add(body, wing);
   meshList = [body, wing];
@@ -136,7 +140,7 @@ loader.load(
     meshList = [];
     aircraft.traverse((child) => {
       if (child.isMesh) {
-        child.material = darkMaterial;
+        child.material = glowMaterial;
         meshList.push(child);
       }
       const name = (child.name || '').toLowerCase();
@@ -188,6 +192,11 @@ const target = {
   rot: { x: 0, y: 0, z: 0 },
   cam: { x: 0, y: 0.3, z: 6 },
 };
+
+// one entry per shot/section, in the same order: 0 = dark, 1 = light.
+// The scroll handler blends continuously between these — same mechanism as the
+// flight path above, so the theme and the camera move in perfect lockstep.
+const themeStops = [0, 1, 0, 1, 0, 1, 0];
 
 // ---------- tiny critically-damped spring system ----------
 function makeSpring(initial) {
@@ -301,26 +310,16 @@ ScrollTrigger.create({
     target.cam.y = lerp(a.cam.y, b.cam.y, localT);
     target.cam.z = lerp(a.cam.z, b.cam.z, localT);
 
-    const energy = 0.75 + p * 0.55;
-    darkMaterial.uniforms.energy.value = energy;
-    lightMaterial.uniforms.energy.value = energy;
+    glowMaterial.uniforms.energy.value = 0.75 + p * 0.55;
+
+    const themeValue = lerp(themeStops[i], themeStops[i + 1], localT);
+    applyThemeBlend(themeValue);
 
     tmAlt.textContent = Math.round(p * 120).toString().padStart(3, '0');
     tmMoist.textContent = Math.round(20 + p * 60).toString().padStart(2, '0');
     const stageIndex = Math.min(statusStages.length - 1, Math.floor(p * statusStages.length));
     tmStatus.textContent = statusStages[stageIndex];
   },
-});
-
-// ---------- theme switching: whichever section is centered wins ----------
-document.querySelectorAll('.panel[data-theme]').forEach((panel) => {
-  ScrollTrigger.create({
-    trigger: panel,
-    start: 'top center',
-    end: 'bottom center',
-    onEnter: () => applyTheme(panel.dataset.theme),
-    onEnterBack: () => applyTheme(panel.dataset.theme),
-  });
 });
 
 // ---------- reveal-on-scroll for the right-hand text column ----------
@@ -367,6 +366,7 @@ function animate() {
   renderer.render(scene, camera);
 }
 sizeRenderer();
+applyThemeBlend(0);
 animate();
 
 // ---------- resize ----------
