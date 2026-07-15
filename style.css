@@ -1,19 +1,15 @@
 /* ---------------------------------------------------
-   Token system — monochrome, demo/professional register
-   void        #0a0a0a   background
-   panel-line  #232323   hairline dividers
-   ink-1       #f5f5f2   primary text (warm white, not pure #fff)
-   ink-2       #9a9a94   secondary text
-   ink-3       #55554f   tertiary / labels at rest
-   glow        #ffffff   fresnel material, intensity is scroll-driven
+   Strict two-tone system — everything on this page is
+   black, white, or an opacity of one of the two. No
+   third hue anywhere.
 --------------------------------------------------- */
 
 :root {
-  --void: #0a0a0a;
-  --panel-line: #232323;
-  --ink-1: #f5f5f2;
-  --ink-2: #9a9a94;
-  --ink-3: #55554f;
+  --void: #000000;
+  --ink-1: #ffffff;
+  --ink-2: rgba(255, 255, 255, 0.6);
+  --ink-3: rgba(255, 255, 255, 0.35);
+  --panel-line: rgba(255, 255, 255, 0.14);
 }
 
 * { box-sizing: border-box; }
@@ -46,6 +42,23 @@ h1, h2, h3 {
   margin: 0 0 1.2rem;
 }
 
+/* ================= theme scoping =================
+   Each panel sets its own tone by re-declaring the ink
+   tokens — every rule below just consumes var(--ink-*),
+   so nothing needs to be duplicated per-theme. */
+.theme-light {
+  --void: #ffffff;
+  --ink-1: #000000;
+  --ink-2: rgba(0, 0, 0, 0.62);
+  --ink-3: rgba(0, 0, 0, 0.38);
+  --panel-line: rgba(0, 0, 0, 0.14);
+  background: #ffffff;
+  color: #000000;
+}
+.theme-dark {
+  background: #000000;
+}
+
 /* ================= layout: viewport left / text right ================= */
 
 #viewport {
@@ -55,8 +68,13 @@ h1, h2, h3 {
   width: 50vw;
   height: 100vh;
   z-index: 0;
-  background: var(--void);
-  border-right: 1px solid var(--panel-line);
+  background: #000000;
+  border-right: 1px solid rgba(255, 255, 255, 0.14);
+  transition: background 0.7s ease, border-color 0.7s ease;
+}
+#viewport.light-theme {
+  background: #ffffff;
+  border-right-color: rgba(0, 0, 0, 0.14);
 }
 #scene {
   width: 100%;
@@ -67,7 +85,11 @@ h1, h2, h3 {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  box-shadow: inset 0 0 14vw 2vw rgba(0,0,0,0.75);
+  box-shadow: inset 0 0 14vw 2vw rgba(0, 0, 0, 0.75);
+  transition: box-shadow 0.7s ease;
+}
+#viewport.light-theme #vignette {
+  box-shadow: inset 0 0 14vw 2vw rgba(0, 0, 0, 0.08);
 }
 
 #loading {
@@ -78,19 +100,19 @@ h1, h2, h3 {
   align-items: center;
   justify-content: center;
   gap: 0.6rem;
-  background: var(--void);
+  background: #000000;
   z-index: 5;
 }
 #loading-pct {
   font-family: 'Space Grotesk', sans-serif;
   font-size: 2.2rem;
-  color: var(--ink-1);
+  color: #ffffff;
 }
 #loading-label {
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.68rem;
   letter-spacing: 0.2em;
-  color: var(--ink-3);
+  color: rgba(255, 255, 255, 0.5);
 }
 
 #telemetry {
@@ -105,30 +127,25 @@ h1, h2, h3 {
   gap: 0.35rem;
   padding: 0.9rem 1.15rem;
   border-radius: 10px;
-  background: rgba(20, 20, 20, 0.35);
+  background: rgba(128, 128, 128, 0.12);
   backdrop-filter: blur(14px) saturate(140%);
   -webkit-backdrop-filter: blur(14px) saturate(140%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--panel-line);
   opacity: 0;
   transform: scale(0.94);
   filter: blur(6px);
   transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
               transform 0.6s cubic-bezier(0.16, 1, 0.3, 1),
-              filter 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+              filter 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+              color 0.7s ease, border-color 0.7s ease, background 0.7s ease;
 }
 #telemetry.materialized {
   opacity: 1;
   transform: scale(1);
   filter: blur(0px);
 }
-.telemetry-row span:first-child {
-  color: var(--ink-2);
-  margin-right: 0.5rem;
-}
-.telemetry-row span:nth-child(2) {
-  color: var(--ink-1);
-  font-weight: 500;
-}
+.telemetry-row span:first-child { color: var(--ink-2); margin-right: 0.5rem; }
+.telemetry-row span:nth-child(2) { color: var(--ink-1); font-weight: 500; }
 #tm-status { color: var(--ink-1); }
 
 /* ---------- right column ---------- */
@@ -145,6 +162,7 @@ main {
   align-items: center;
   padding: 6vh 6vw;
   border-bottom: 1px solid var(--panel-line);
+  transition: background 0.4s ease, color 0.4s ease;
 }
 .panel:last-child { border-bottom: none; }
 
@@ -164,13 +182,6 @@ main {
   font-size: clamp(2.6rem, 6vw, 4.6rem);
   letter-spacing: 0.01em;
 }
-.hero .subhead {
-  max-width: 40ch;
-  color: var(--ink-2);
-  font-size: 1.02rem;
-  line-height: 1.6;
-  margin-top: 1.2rem;
-}
 .scroll-cue {
   margin-top: 3rem;
   font-family: 'JetBrains Mono', monospace;
@@ -185,6 +196,13 @@ main {
 @keyframes bob {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(6px); }
+}
+
+.slogan .reveal { max-width: 46ch; }
+.slogan-text {
+  font-size: clamp(1.7rem, 3.6vw, 2.6rem);
+  line-height: 1.2;
+  margin-bottom: 1.2rem;
 }
 
 .sequence .steps {
@@ -202,7 +220,7 @@ main {
 .step p { color: var(--ink-2); font-size: 0.9rem; line-height: 1.55; margin: 0; }
 
 .sim .reveal, .closing .reveal { max-width: 46ch; }
-.sim h2, .closing h2 {
+.sim h2, .closing h2, .map-impact h2 {
   font-size: clamp(1.6rem, 3.4vw, 2.4rem);
   line-height: 1.18;
   margin-bottom: 1.3rem;
@@ -211,6 +229,43 @@ main {
   color: var(--ink-2);
   font-size: 1rem;
   line-height: 1.7;
+}
+
+/* ---------- map & impact ---------- */
+.map-impact .reveal { max-width: 46ch; }
+.coverage-map {
+  width: 100%;
+  height: auto;
+  margin: 1.4rem 0 0.6rem;
+  display: block;
+}
+.map-caption {
+  font-size: 0.85rem;
+  margin-bottom: 1.6rem;
+}
+.impact-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.4rem;
+}
+.impact-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  border-top: 1px solid var(--panel-line);
+  padding-top: 0.8rem;
+}
+.impact-value {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.4rem;
+  color: var(--ink-1);
+}
+.impact-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.64rem;
+  letter-spacing: 0.06em;
+  color: var(--ink-2);
+  text-transform: uppercase;
 }
 
 .specs .spec-grid {
@@ -269,11 +324,12 @@ main {
     width: 100vw;
     height: 46vh;
     border-right: none;
-    border-bottom: 1px solid var(--panel-line);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.14);
   }
   main { margin-left: 0; width: 100vw; }
   .panel { min-height: auto; padding: 8vh 6vw; }
   .sequence .steps, .specs .spec-grid { grid-template-columns: repeat(2, 1fr); }
+  .impact-grid { grid-template-columns: repeat(3, 1fr); }
   #telemetry { bottom: 1.2rem; left: 1.2rem; font-size: 0.62rem; }
 }
 
@@ -282,4 +338,5 @@ main {
   .arrow { animation: none; }
   .reveal { transition: opacity 0.3s ease; transform: none !important; }
   #telemetry { transition: opacity 0.3s ease; transform: none !important; filter: none !important; }
+  #viewport, #vignette { transition: none; }
 }
