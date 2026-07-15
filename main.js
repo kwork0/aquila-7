@@ -225,5 +225,3 @@ window.addEventListener('resize', sizeRenderer);
 
 // ---------- repo link ----------
 document.getElementById('repo-link').href = 'https://github.com/your-username/aquila-7-showcase';
-JSEOF
-echo done
