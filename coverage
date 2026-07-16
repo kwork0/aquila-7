@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Coverage — AQUILA-7</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body class="standalone">
+
+  <nav id="site-nav">
+    <span class="nav-brand">AQUILA-7</span>
+    <div class="nav-links">
+      <a class="nav-link" href="index.html#welcome">Welcome</a>
+      <a class="nav-link" href="index.html#learn-more">Learn More</a>
+      <a class="nav-link" href="index.html#video">Video</a>
+      <a class="nav-link" href="coverage.html">Coverage</a>
+      <a class="nav-link nav-link-repo" href="https://github.com/your-username/aquila-7-showcase" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </nav>
+
+  <main class="standalone-main">
+
+    <section class="panel-static">
+      <div class="reveal">
+        <p class="eyebrow">COVERAGE</p>
+        <h1 class="page-title">Watching the valley,<br>field by field.</h1>
+        <p class="body-text">This is the actual live ops dashboard — the same one fed by the Roblox flight simulation, embedded straight from its own repo.</p>
+      </div>
+    </section>
+
+    <section class="panel-static">
+      <div class="reveal">
+        <div class="monitor-frame monitor-frame-large">
+          <div class="monitor-bar">
+            <span class="monitor-dot"></span>
+            <span class="monitor-label">LIVE MONITOR</span>
+            <a class="monitor-link" href="https://kwork0.github.io/Drought-System-/" target="_blank" rel="noopener">Open full screen ↗</a>
+          </div>
+          <iframe
+            class="monitor-frame-embed"
+            src="https://kwork0.github.io/Drought-System-/"
+            title="Shenandoah Drought Ops — live monitor"
+            loading="lazy"
+            referrerpolicy="no-referrer-when-downgrade">
+          </iframe>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel-static">
+      <div class="reveal">
+        <p class="eyebrow">IMPACT</p>
+        <div class="impact-grid">
+          <div class="impact-stat"><span class="impact-value">TBD</span><span class="impact-label">Acres monitored</span></div>
+          <div class="impact-stat"><span class="impact-value">TBD</span><span class="impact-label">Water saved</span></div>
+          <div class="impact-stat"><span class="impact-value">TBD</span><span class="impact-label">Farms partnered</span></div>
+        </div>
+        <a class="cta cta-back" href="index.html">← BACK TO AQUILA-7</a>
+      </div>
+    </section>
+
+  </main>
+
+<script>
+  // this page has no 3D scene, so the nav bar just stays a fixed dark tone —
+  // no theme-blend wiring needed here, unlike index.html
+  const revealEls = document.querySelectorAll('.reveal');
+  const io = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) entry.target.classList.add('in-view');
+      });
+    },
+    { threshold: 0.2 }
+  );
+  revealEls.forEach((el) => io.observe(el));
+</script>
+</body>
+</html>
