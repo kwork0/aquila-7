@@ -202,13 +202,32 @@ h1, h2, h3 {
 .telemetry-row span:nth-child(2) { color: var(--ink-1); font-weight: 500; }
 #tm-status { color: var(--ink-1); }
 
-/* ---------- right column ---------- */
-main {
+/* ---------- right column (index.html: aircraft viewport on the left) ---------- */
+main.split-main {
   position: relative;
   z-index: 2;
   margin-left: 50vw;
   width: 50vw;
 }
+
+/* ---------- standalone pages (no fixed 3D viewport) ---------- */
+main.standalone-main {
+  position: relative;
+  z-index: 2;
+  max-width: 860px;
+  margin: 0 auto;
+  padding-top: 64px;
+}
+.panel-static {
+  padding: 8vh 6vw;
+}
+.page-title {
+  font-size: clamp(1.9rem, 4.4vw, 2.8rem);
+  line-height: 1.15;
+  margin-bottom: 1.2rem;
+}
+.monitor-frame-large .monitor-frame-embed { aspect-ratio: 16 / 9; }
+.cta-back { margin-top: 0.4rem; }
 
 .panel {
   min-height: 100vh;
@@ -474,7 +493,7 @@ main {
     border-right: none;
     border-bottom: 1px solid rgba(255, 255, 255, 0.14);
   }
-  main { margin-left: 0; width: 100vw; }
+  main.split-main { margin-left: 0; width: 100vw; }
   .hero { padding-top: 8vh; }
   .panel { min-height: auto; padding: 8vh 6vw; }
   .sequence .steps, .specs .spec-grid { grid-template-columns: repeat(2, 1fr); }
