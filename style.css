@@ -83,6 +83,21 @@ h1, h2, h3 {
   font-weight: 700;
   font-size: 0.92rem;
   letter-spacing: 0.03em;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+.nav-prop-icon {
+  flex-shrink: 0;
+  animation: nav-prop-spin 1.1s linear infinite;
+  transform-origin: 50% 50%;
+}
+@keyframes nav-prop-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-prop-icon { animation: none; }
 }
 .nav-links {
   display: flex;
@@ -226,7 +241,15 @@ main.standalone-main {
   line-height: 1.15;
   margin-bottom: 1.2rem;
 }
-.monitor-frame-large .monitor-frame-embed { aspect-ratio: 16 / 9; }
+.monitor-frame-large { max-width: 1400px; margin-left: auto; margin-right: auto; }
+.monitor-frame-large .monitor-frame-embed { width: 100%; height: 82vh; aspect-ratio: unset; }
+.full-bleed {
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  padding-left: 4vw;
+  padding-right: 4vw;
+}
 .cta-back { margin-top: 0.4rem; }
 
 .panel {
@@ -457,6 +480,11 @@ main.standalone-main {
   text-transform: uppercase;
 }
 
+.cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
 .cta {
   display: inline-block;
   margin-top: 1.8rem;
@@ -468,6 +496,15 @@ main.standalone-main {
   font-size: 0.74rem;
   letter-spacing: 0.15em;
   transition: background 0.3s ease, color 0.3s ease;
+}
+.cta-secondary {
+  border-color: var(--ink-3);
+  color: var(--ink-2);
+}
+.cta.cta-secondary:hover {
+  background: transparent;
+  border-color: var(--ink-1);
+  color: var(--ink-1);
 }
 .cta:hover {
   background: var(--ink-1);
