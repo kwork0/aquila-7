@@ -1,8 +1,6 @@
 // =====================================================================
 // AQUILA-7 showcase — scroll-driven 3D viewer
 // - critically-damped springs drive the flight path (see springStep)
-// - the model is directly draggable, 1:1 with the pointer, velocity
-//   carries through into the spring on release
 // - the whole viewport (background + aircraft material) inverts between
 //   a dark and light theme depending on which text section is active
 // - any mesh named with "rotor" or "prop" in it spins continuously —
@@ -65,7 +63,7 @@ heroLights.add(heroFill);
 scene.add(heroLights);
 
 const floorGeo = new THREE.PlaneGeometry(50, 50);
-const floorMat = new THREE.MeshStandardMaterial({ color: 0x030303, roughness: 0.55, metalness: 0.25 });
+const floorMat = new THREE.MeshStandardMaterial({ color: 0x030303, roughness: 0.92, metalness: 0.04 });
 const floor = new THREE.Mesh(floorGeo, floorMat);
 floor.rotation.x = -Math.PI / 2;
 floor.position.y = -1.15;
@@ -75,7 +73,7 @@ scene.add(floor);
 // A grounded, physically-lit material for the hero moment — the fresnel glow
 // material reads as a stylized HUD element, not a "real object", so the hero
 // swaps to this instead and hands back to the glow material once you scroll.
-const realMaterial = new THREE.MeshStandardMaterial({ color: 0xe9e9e6, metalness: 0.35, roughness: 0.42 });
+const realMaterial = new THREE.MeshStandardMaterial({ color: 0x121316, metalness: 0.55, roughness: 0.3 });
 
 let heroMode = null; // null forces the first setHeroMode() call to actually apply
 function currentAircraftMaterial() {
@@ -306,11 +304,6 @@ function springStep(spring, target, dt, omega) {
   spring.value = newX + target;
   spring.velocity = newV;
 }
-function rubberband(overshoot, dimension, constant = 0.55) {
-  const sign = overshoot < 0 ? -1 : 1;
-  const o = Math.abs(overshoot);
-  return sign * (o * dimension * constant) / (dimension + constant * o);
-}
 function smoothstep(t) {
   return t * t * (3 - 2 * t);
 }
@@ -325,55 +318,6 @@ const springs = {
 };
 const OMEGA_POSITION = 9;
 const OMEGA_ROTATION = 7;
-
-// ---------- direct manipulation: grab and spin the model, 1:1 with the pointer ----------
-const drag = { active: false, lastX: 0, lastY: 0, lastTime: 0, offsetY: 0, offsetX: 0 };
-const PITCH_LIMIT = 0.5;
-
-if (!prefersReducedMotion) {
-  canvas.style.cursor = 'grab';
-  canvas.style.touchAction = 'none';
-
-  canvas.addEventListener('pointerdown', (e) => {
-    drag.active = true;
-    canvas.setPointerCapture(e.pointerId);
-    canvas.style.cursor = 'grabbing';
-    drag.lastX = e.clientX;
-    drag.lastY = e.clientY;
-    drag.lastTime = performance.now();
-  });
-
-  window.addEventListener('pointermove', (e) => {
-    if (!drag.active) return;
-    const now = performance.now();
-    const dt = Math.max((now - drag.lastTime) / 1000, 1 / 120);
-    const dx = e.clientX - drag.lastX;
-    const dy = e.clientY - drag.lastY;
-
-    drag.offsetY += dx * 0.010;
-    const rawPitchOffset = drag.offsetX + dy * 0.008;
-    drag.offsetX = Math.abs(rawPitchOffset) > PITCH_LIMIT
-      ? Math.sign(rawPitchOffset) * PITCH_LIMIT + rubberband(rawPitchOffset - Math.sign(rawPitchOffset) * PITCH_LIMIT, 0.6)
-      : rawPitchOffset;
-
-    springs.rotY.value = target.rot.y + drag.offsetY;
-    springs.rotY.velocity = (dx * 0.010) / dt;
-    springs.rotX.value = target.rot.x + drag.offsetX;
-    springs.rotX.velocity = (dy * 0.008) / dt;
-
-    drag.lastX = e.clientX;
-    drag.lastY = e.clientY;
-    drag.lastTime = now;
-  });
-
-  window.addEventListener('pointerup', () => {
-    if (!drag.active) return;
-    drag.active = false;
-    canvas.style.cursor = 'grab';
-    drag.offsetY = 0;
-    drag.offsetX = 0;
-  });
-}
 
 // ---------- telemetry + scroll target ----------
 const tmAlt = document.getElementById('tm-alt');
@@ -457,10 +401,8 @@ function animate() {
   springStep(springs.camY, target.cam.y, dt, OMEGA_POSITION);
   springStep(springs.camZ, target.cam.z, dt, OMEGA_POSITION);
 
-  if (!drag.active) {
-    springStep(springs.rotX, target.rot.x, dt, OMEGA_ROTATION);
-    springStep(springs.rotY, target.rot.y, dt, OMEGA_ROTATION);
-  }
+  springStep(springs.rotX, target.rot.x, dt, OMEGA_ROTATION);
+  springStep(springs.rotY, target.rot.y, dt, OMEGA_ROTATION);
   springStep(springs.rotZ, target.rot.z, dt, OMEGA_ROTATION);
 
   rig.position.set(springs.posX.value, springs.posY.value, springs.posZ.value);
