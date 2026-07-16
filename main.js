@@ -89,26 +89,50 @@ navPropCamera.position.set(0, 0, 4.2);
 navPropScene.add(new THREE.AmbientLight(0xffffff, 1.4));
 
 // flat, unlit material so it reads as a clean silhouette at this size — color is
-// kept in sync with the nav's ink color every scroll tick, in applyThemeBlend below
-const navPropMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+// kept in sync with the nav's ink color every scroll tick, in applyThemeBlend below.
+// DoubleSide matters here: if the mesh's normals face the "wrong" way relative to
+// this camera, a single-sided material renders nothing at all — better to just
+// never cull it at this tiny size than debug winding order for a nav icon.
+const navPropMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
 let navPropObj = null;
 
-new THREE.GLTFLoader().load('propeller2_Untitled.glb', (gltf) => {
-  navPropObj = gltf.scene;
-  navPropObj.traverse((child) => {
-    if (child.isMesh) child.material = navPropMaterial;
-    // undo the same baked lay-flat rotation described in the main propeller comment —
-    // the mesh already faces the camera correctly once this is cleared
-    child.rotation.set(0, 0, 0);
-    child.position.set(0, 0, 0);
-  });
-  const box = new THREE.Box3().setFromObject(navPropObj);
-  const size = box.getSize(new THREE.Vector3()).length() || 1;
-  navPropObj.scale.setScalar(2.5 / size);
-  const center = box.getCenter(new THREE.Vector3()).multiplyScalar(2.5 / size);
-  navPropObj.position.sub(center);
-  navPropScene.add(navPropObj);
-});
+function navPropFallback() {
+  // shown if propeller2_Untitled.glb fails to load, so the nav never silently shows
+  // nothing — check the browser console for the actual fetch error if you see this
+  const group = new THREE.Group();
+  for (let i = 0; i < 3; i++) {
+    const blade = new THREE.Mesh(new THREE.CircleGeometry(0.5, 3), navPropMaterial);
+    blade.rotation.z = (i * Math.PI * 2) / 3;
+    group.add(blade);
+  }
+  return group;
+}
+
+new THREE.GLTFLoader().load(
+  'propeller2_Untitled.glb',
+  (gltf) => {
+    navPropObj = gltf.scene;
+    navPropObj.traverse((child) => {
+      if (child.isMesh) child.material = navPropMaterial;
+      // undo the same baked lay-flat rotation described in the main propeller comment —
+      // the mesh already faces the camera correctly once this is cleared
+      child.rotation.set(0, 0, 0);
+      child.position.set(0, 0, 0);
+    });
+    const box = new THREE.Box3().setFromObject(navPropObj);
+    const size = box.getSize(new THREE.Vector3()).length() || 1;
+    navPropObj.scale.setScalar(2.5 / size);
+    const center = box.getCenter(new THREE.Vector3()).multiplyScalar(2.5 / size);
+    navPropObj.position.sub(center);
+    navPropScene.add(navPropObj);
+  },
+  undefined,
+  (err) => {
+    console.error('nav propeller: propeller2_Untitled.glb failed to load', err);
+    navPropObj = navPropFallback();
+    navPropScene.add(navPropObj);
+  }
+);
 
 let heroMode = null; // null forces the first setHeroMode() call to actually apply
 function currentAircraftMaterial() {
