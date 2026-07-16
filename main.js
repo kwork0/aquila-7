@@ -75,6 +75,41 @@ scene.add(floor);
 // swaps to this instead and hands back to the glow material once you scroll.
 const realMaterial = new THREE.MeshStandardMaterial({ color: 0x121316, metalness: 0.55, roughness: 0.3 });
 
+// ---------- nav propeller: a small second scene rendering your actual propeller
+// model (not a placeholder icon), spinning in the plane it already faces —
+// same lay-flat-rotation fix as before, just without attaching it to the aircraft. ----------
+const navPropCanvas = document.getElementById('nav-prop-canvas');
+const navPropRenderer = new THREE.WebGLRenderer({ canvas: navPropCanvas, alpha: true, antialias: true });
+navPropRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+navPropRenderer.setSize(40, 40, false);
+
+const navPropScene = new THREE.Scene();
+const navPropCamera = new THREE.PerspectiveCamera(28, 1, 0.1, 10);
+navPropCamera.position.set(0, 0, 4.2);
+navPropScene.add(new THREE.AmbientLight(0xffffff, 1.4));
+
+// flat, unlit material so it reads as a clean silhouette at this size — color is
+// kept in sync with the nav's ink color every scroll tick, in applyThemeBlend below
+const navPropMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+let navPropObj = null;
+
+new THREE.GLTFLoader().load('propeller2_Untitled.glb', (gltf) => {
+  navPropObj = gltf.scene;
+  navPropObj.traverse((child) => {
+    if (child.isMesh) child.material = navPropMaterial;
+    // undo the same baked lay-flat rotation described in the main propeller comment —
+    // the mesh already faces the camera correctly once this is cleared
+    child.rotation.set(0, 0, 0);
+    child.position.set(0, 0, 0);
+  });
+  const box = new THREE.Box3().setFromObject(navPropObj);
+  const size = box.getSize(new THREE.Vector3()).length() || 1;
+  navPropObj.scale.setScalar(2.5 / size);
+  const center = box.getCenter(new THREE.Vector3()).multiplyScalar(2.5 / size);
+  navPropObj.position.sub(center);
+  navPropScene.add(navPropObj);
+});
+
 let heroMode = null; // null forces the first setHeroMode() call to actually apply
 function currentAircraftMaterial() {
   return heroMode ? realMaterial : glowMaterial;
@@ -154,6 +189,8 @@ function applyThemeBlend(t) {
   navEl.style.background = `rgba(${bg}, ${bg}, ${bg}, 0.55)`;
   navEl.style.color = `rgb(${ink}, ${ink}, ${ink})`;
   navEl.style.borderBottomColor = `rgba(${ink}, ${ink}, ${ink}, 0.14)`;
+
+  navPropMaterial.color.setRGB(ink / 255, ink / 255, ink / 255);
 }
 
 // ---------- model loading (with a placeholder if the glb isn't there yet) ----------
@@ -412,6 +449,12 @@ function animate() {
 
   // spin any rotor/prop meshes continuously, independent of the flight-path animation
   rotors.forEach((r) => { r.rotation.y += dt * 18; });
+
+  // the nav propeller faces the camera directly, so it spins in-plane (Z), not Y
+  if (navPropObj) {
+    navPropObj.rotation.z -= dt * 14;
+  }
+  navPropRenderer.render(navPropScene, navPropCamera);
 
   renderer.render(scene, camera);
 }
