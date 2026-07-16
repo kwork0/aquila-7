@@ -20,6 +20,7 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
 const viewportEl = document.getElementById('viewport');
+const navEl = document.getElementById('site-nav');
 function sizeRenderer() {
   const w = viewportEl.clientWidth;
   const h = viewportEl.clientHeight;
@@ -99,6 +100,12 @@ function applyThemeBlend(t) {
 
   const vignetteAlpha = lerp(0.75, 0.08, t);
   document.getElementById('vignette').style.boxShadow = `inset 0 0 14vw 2vw rgba(0, 0, 0, ${vignetteAlpha})`;
+
+  // the fixed top nav inverts the same way — same numbers, just applied to a
+  // translucent bar instead of an opaque one
+  navEl.style.background = `rgba(${bg}, ${bg}, ${bg}, 0.55)`;
+  navEl.style.color = `rgb(${ink}, ${ink}, ${ink})`;
+  navEl.style.borderBottomColor = `rgba(${ink}, ${ink}, ${ink}, 0.14)`;
 }
 
 // ---------- model loading (with a placeholder if the glb isn't there yet) ----------
@@ -179,11 +186,12 @@ function normalizeAndAdd(obj) {
 // ---------- shot list: one per section, a deliberate flight move rather than a spin ----------
 const shots = [
   { pos: { x: 0, y: 0, z: 0 }, rot: { x: 0, y: 0, z: 0 }, cam: { x: 0, y: 0.3, z: 6 } },
-  { pos: { x: 0.3, y: -0.05, z: 0 }, rot: { x: -0.1, y: 0.7, z: 0.2 }, cam: { x: 0.5, y: 0.4, z: 5.0 } },
-  { pos: { x: 0.35, y: -0.1, z: 0 }, rot: { x: -0.22, y: 1.4, z: 0.35 }, cam: { x: 0.7, y: 0.55, z: 4.7 } },
-  { pos: { x: -0.3, y: 0.15, z: 0.1 }, rot: { x: 0.06, y: 2.1, z: -0.28 }, cam: { x: -0.5, y: 0.2, z: 4.2 } },
-  { pos: { x: -0.3, y: 0.15, z: 0 }, rot: { x: 0.1, y: 2.9, z: -0.32 }, cam: { x: -0.55, y: 0.1, z: 4.0 } },
-  { pos: { x: 0, y: -0.05, z: 0.2 }, rot: { x: 0, y: 3.7, z: 0.08 }, cam: { x: 0, y: 0.15, z: 2.5 } },
+  { pos: { x: 0.3, y: -0.05, z: 0 }, rot: { x: -0.1, y: 0.65, z: 0.2 }, cam: { x: 0.5, y: 0.4, z: 5.0 } },
+  { pos: { x: 0.35, y: -0.1, z: 0 }, rot: { x: -0.22, y: 1.3, z: 0.35 }, cam: { x: 0.7, y: 0.55, z: 4.7 } },
+  { pos: { x: 0.1, y: -0.08, z: 0.15 }, rot: { x: -0.05, y: 1.9, z: 0.15 }, cam: { x: 0.3, y: 0.35, z: 4.3 } },
+  { pos: { x: -0.3, y: 0.15, z: 0.1 }, rot: { x: 0.06, y: 2.5, z: -0.28 }, cam: { x: -0.5, y: 0.2, z: 4.2 } },
+  { pos: { x: -0.3, y: 0.15, z: 0 }, rot: { x: 0.1, y: 3.1, z: -0.32 }, cam: { x: -0.55, y: 0.1, z: 4.0 } },
+  { pos: { x: 0, y: -0.05, z: 0.2 }, rot: { x: 0, y: 3.8, z: 0.08 }, cam: { x: 0, y: 0.15, z: 2.5 } },
   { pos: { x: 0, y: 0, z: 0 }, rot: { x: 0, y: 4.5, z: 0 }, cam: { x: 0, y: 0.4, z: 5.3 } },
 ];
 
@@ -196,7 +204,7 @@ const target = {
 // one entry per shot/section, in the same order: 0 = dark, 1 = light.
 // The scroll handler blends continuously between these — same mechanism as the
 // flight path above, so the theme and the camera move in perfect lockstep.
-const themeStops = [0, 1, 0, 1, 0, 1, 0];
+const themeStops = [0, 1, 0, 1, 0, 1, 0, 1];
 
 // ---------- tiny critically-damped spring system ----------
 function makeSpring(initial) {
@@ -321,6 +329,15 @@ ScrollTrigger.create({
     tmStatus.textContent = statusStages[stageIndex];
   },
 });
+
+// ---------- video fallback: if flight-demo.mp4 isn't in the repo yet, show a placeholder
+// instead of a broken player ----------
+const showcaseVideo = document.getElementById('showcase-video');
+const videoPlaceholder = document.getElementById('video-placeholder');
+showcaseVideo.addEventListener('error', () => {
+  showcaseVideo.style.display = 'none';
+  videoPlaceholder.classList.add('visible');
+}, true);
 
 // ---------- reveal-on-scroll for the right-hand text column ----------
 const revealEls = document.querySelectorAll('.reveal');
