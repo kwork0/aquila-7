@@ -35,7 +35,7 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0, 0, 0);
 
 const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
-camera.position.set(0, 0.15, 3.0);
+camera.position.set(0, 0.55, 3.0);
 
 scene.add(new THREE.AmbientLight(0x999999, 0.55));
 const key = new THREE.DirectionalLight(0xffffff, 0.35);
@@ -75,7 +75,7 @@ scene.add(floor);
 // A grounded, physically-lit material for the hero moment — the fresnel glow
 // material reads as a stylized HUD element, not a "real object", so the hero
 // swaps to this instead and hands back to the glow material once you scroll.
-const realMaterial = new THREE.MeshStandardMaterial({ color: 0x15161a, metalness: 0.55, roughness: 0.38 });
+const realMaterial = new THREE.MeshStandardMaterial({ color: 0xe9e9e6, metalness: 0.35, roughness: 0.42 });
 
 let heroMode = null; // null forces the first setHeroMode() call to actually apply
 function currentAircraftMaterial() {
@@ -229,40 +229,38 @@ loader.load(
   }
 );
 
-// ---------- decorative/functional propeller ----------
-// The source file bakes a 90° rotation into its single node, which is what
-// leaves it lying flat. Its own geometry already faces the camera correctly
-// (it's a wide, thin disc), so clearing that baked rotation stands it back up.
-// Nudge PROP_OFFSET / PROP_SCALE below once you see where it actually needs to sit.
-const PROP_SCALE = 0.85; // relative to the aircraft's normalized size (2.2 units)
-const PROP_OFFSET = { x: 0, y: 0.05, z: 1.05 }; // position relative to the aircraft's center
-const propRig = new THREE.Group();
-propRig.position.set(PROP_OFFSET.x, PROP_OFFSET.y, PROP_OFFSET.z);
-rig.add(propRig);
-
-loader.load(
-  'propeller2_Untitled.glb',
-  (gltf) => {
-    const prop = gltf.scene;
-    prop.traverse((child) => {
-      if (child.isMesh) {
-        child.material = currentAircraftMaterial();
-        child.castShadow = true;
-        meshList.push(child);
-        rotors.push(child);
-      }
-      // clear the baked lay-flat rotation/offset — see comment above
-      child.rotation.set(0, 0, 0);
-      child.position.set(0, 0, 0);
-    });
-    normalizeObject(prop, PROP_SCALE);
-    propRig.add(prop);
-  },
-  undefined,
-  () => {
-    // no propeller file present — silently skip, the rest of the scene works without it
-  }
-);
+// ---------- decorative/functional propeller (disabled for now) ----------
+// Currently commented out — the placement and spin direction weren't reading right
+// yet, so it's out of the scene until that's sorted. Uncomment this whole block
+// once the orientation/position are fixed to bring it back.
+// const PROP_SCALE = 0.85;
+// const PROP_OFFSET = { x: 0, y: 0.05, z: 1.05 };
+// const propRig = new THREE.Group();
+// propRig.position.set(PROP_OFFSET.x, PROP_OFFSET.y, PROP_OFFSET.z);
+// rig.add(propRig);
+//
+// loader.load(
+//   'propeller2_Untitled.glb',
+//   (gltf) => {
+//     const prop = gltf.scene;
+//     prop.traverse((child) => {
+//       if (child.isMesh) {
+//         child.material = currentAircraftMaterial();
+//         child.castShadow = true;
+//         meshList.push(child);
+//         rotors.push(child);
+//       }
+//       child.rotation.set(0, 0, 0);
+//       child.position.set(0, 0, 0);
+//     });
+//     normalizeObject(prop, PROP_SCALE);
+//     propRig.add(prop);
+//   },
+//   undefined,
+//   () => {
+//     // no propeller file present — silently skip, the rest of the scene works without it
+//   }
+// );
 
 function normalizeObject(obj, targetSize) {
   const box = new THREE.Box3().setFromObject(obj);
@@ -275,7 +273,7 @@ function normalizeObject(obj, targetSize) {
 
 // ---------- shot list: one per section, a deliberate flight move rather than a spin ----------
 const shots = [
-  { pos: { x: 0, y: 0, z: 0 }, rot: { x: 0, y: 0, z: 0 }, cam: { x: 0, y: 0.15, z: 3.0 } },
+  { pos: { x: 0, y: 0, z: 0 }, rot: { x: 0, y: 0, z: 0 }, cam: { x: 0, y: 0.55, z: 3.0 } },
   { pos: { x: 0.3, y: -0.05, z: 0 }, rot: { x: -0.1, y: 0.65, z: 0.2 }, cam: { x: 0.5, y: 0.4, z: 5.0 } },
   { pos: { x: 0.35, y: -0.1, z: 0 }, rot: { x: -0.22, y: 1.3, z: 0.35 }, cam: { x: 0.7, y: 0.55, z: 4.7 } },
   { pos: { x: 0.1, y: -0.08, z: 0.15 }, rot: { x: -0.05, y: 1.9, z: 0.15 }, cam: { x: 0.3, y: 0.35, z: 4.3 } },
@@ -287,7 +285,7 @@ const shots = [
 const target = {
   pos: { x: 0, y: 0, z: 0 },
   rot: { x: 0, y: 0, z: 0 },
-  cam: { x: 0, y: 0.15, z: 3.0 },
+  cam: { x: 0, y: 0.55, z: 3.0 },
 };
 
 // one entry per shot/section, in the same order: 0 = dark, 1 = light.
@@ -323,7 +321,7 @@ function lerp(a, b, t) {
 const springs = {
   posX: makeSpring(0), posY: makeSpring(0), posZ: makeSpring(0),
   rotX: makeSpring(0), rotY: makeSpring(0), rotZ: makeSpring(0),
-  camX: makeSpring(0), camY: makeSpring(0.15), camZ: makeSpring(3.0),
+  camX: makeSpring(0), camY: makeSpring(0.55), camZ: makeSpring(3.0),
 };
 const OMEGA_POSITION = 9;
 const OMEGA_ROTATION = 7;
