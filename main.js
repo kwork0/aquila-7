@@ -18,6 +18,8 @@ const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)
 const canvas = document.getElementById('scene');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 const viewportEl = document.getElementById('viewport');
 const navEl = document.getElementById('site-nav');
@@ -32,13 +34,61 @@ function sizeRenderer() {
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0, 0, 0);
 
-const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
-camera.position.set(0, 0.3, 6);
+const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
+camera.position.set(0, 0.15, 3.0);
 
 scene.add(new THREE.AmbientLight(0x999999, 0.55));
 const key = new THREE.DirectionalLight(0xffffff, 0.35);
 key.position.set(3, 4, 5);
 scene.add(key);
+
+// ---------- hero-only hangar rig ----------
+// Used just for the opening "does this look real" moment, referencing the kind of
+// moody hangar photo you shared: an overhead arc of lamps, a strong rim/back light,
+// and a dark floor the aircraft actually casts a shadow onto. Hidden the rest of
+// the time so it doesn't fight the stylized fresnel look used everywhere else.
+const heroLights = new THREE.Group();
+const arcLightCount = 7;
+for (let n = 0; n < arcLightCount; n++) {
+  const t = n / (arcLightCount - 1);
+  const angle = lerp(-1.1, 1.1, t);
+  const light = new THREE.PointLight(0xfff2df, 1.1, 9, 2);
+  light.position.set(Math.sin(angle) * 3.2, 2.6 + Math.cos(angle) * 0.6, -1.5 + Math.cos(angle) * 1.2);
+  heroLights.add(light);
+}
+const rimLight = new THREE.PointLight(0xdfe8ff, 2.2, 12, 2);
+rimLight.position.set(0, 1.0, -3.2);
+heroLights.add(rimLight);
+const heroFill = new THREE.DirectionalLight(0xaab0c0, 0.25);
+heroFill.position.set(-2, 1.5, 2);
+heroLights.add(heroFill);
+scene.add(heroLights);
+
+const floorGeo = new THREE.PlaneGeometry(50, 50);
+const floorMat = new THREE.MeshStandardMaterial({ color: 0x030303, roughness: 0.55, metalness: 0.25 });
+const floor = new THREE.Mesh(floorGeo, floorMat);
+floor.rotation.x = -Math.PI / 2;
+floor.position.y = -1.15;
+floor.receiveShadow = true;
+scene.add(floor);
+
+// A grounded, physically-lit material for the hero moment — the fresnel glow
+// material reads as a stylized HUD element, not a "real object", so the hero
+// swaps to this instead and hands back to the glow material once you scroll.
+const realMaterial = new THREE.MeshStandardMaterial({ color: 0x15161a, metalness: 0.55, roughness: 0.38 });
+
+let heroMode = null; // null forces the first setHeroMode() call to actually apply
+function currentAircraftMaterial() {
+  return heroMode ? realMaterial : glowMaterial;
+}
+function setHeroMode(active) {
+  if (active === heroMode) return;
+  heroMode = active;
+  const mat = currentAircraftMaterial();
+  meshList.forEach((m) => (m.material = mat));
+  heroLights.visible = active;
+  floor.visible = active;
+}
 
 // ---------- fresnel glow material — a single material whose color continuously
 // blends from white (dark theme) to black (light theme), driven every scroll
@@ -127,10 +177,13 @@ function finishLoading() {
 
 function placeholderJet() {
   const group = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.ConeGeometry(0.35, 2.2, 12), glowMaterial);
+  const mat = currentAircraftMaterial();
+  const body = new THREE.Mesh(new THREE.ConeGeometry(0.35, 2.2, 12), mat);
   body.rotation.x = Math.PI / 2;
-  const wing = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.06, 0.55), glowMaterial);
+  body.castShadow = true;
+  const wing = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.06, 0.55), mat);
   wing.position.z = 0.1;
+  wing.castShadow = true;
   group.add(body, wing);
   meshList = [body, wing];
   return group;
@@ -147,7 +200,8 @@ loader.load(
     meshList = [];
     aircraft.traverse((child) => {
       if (child.isMesh) {
-        child.material = glowMaterial;
+        child.material = currentAircraftMaterial();
+        child.castShadow = true;
         meshList.push(child);
       }
       const name = (child.name || '').toLowerCase();
@@ -155,7 +209,8 @@ loader.load(
         rotors.push(child);
       }
     });
-    normalizeAndAdd(aircraft);
+    normalizeObject(aircraft, 2.2);
+    rig.add(aircraft);
     finishLoading();
   },
   (xhr) => {
@@ -168,43 +223,77 @@ loader.load(
   () => {
     labelEl.textContent = 'NO MODEL FOUND — USING PLACEHOLDER';
     aircraft = placeholderJet();
-    normalizeAndAdd(aircraft);
+    normalizeObject(aircraft, 2.2);
+    rig.add(aircraft);
     setTimeout(finishLoading, 500);
   }
 );
 
-function normalizeAndAdd(obj) {
+// ---------- decorative/functional propeller ----------
+// The source file bakes a 90° rotation into its single node, which is what
+// leaves it lying flat. Its own geometry already faces the camera correctly
+// (it's a wide, thin disc), so clearing that baked rotation stands it back up.
+// Nudge PROP_OFFSET / PROP_SCALE below once you see where it actually needs to sit.
+const PROP_SCALE = 0.85; // relative to the aircraft's normalized size (2.2 units)
+const PROP_OFFSET = { x: 0, y: 0.05, z: 1.05 }; // position relative to the aircraft's center
+const propRig = new THREE.Group();
+propRig.position.set(PROP_OFFSET.x, PROP_OFFSET.y, PROP_OFFSET.z);
+rig.add(propRig);
+
+loader.load(
+  'propeller2_Untitled.glb',
+  (gltf) => {
+    const prop = gltf.scene;
+    prop.traverse((child) => {
+      if (child.isMesh) {
+        child.material = currentAircraftMaterial();
+        child.castShadow = true;
+        meshList.push(child);
+        rotors.push(child);
+      }
+      // clear the baked lay-flat rotation/offset — see comment above
+      child.rotation.set(0, 0, 0);
+      child.position.set(0, 0, 0);
+    });
+    normalizeObject(prop, PROP_SCALE);
+    propRig.add(prop);
+  },
+  undefined,
+  () => {
+    // no propeller file present — silently skip, the rest of the scene works without it
+  }
+);
+
+function normalizeObject(obj, targetSize) {
   const box = new THREE.Box3().setFromObject(obj);
   const size = box.getSize(new THREE.Vector3()).length() || 1;
-  const scale = 2.2 / size;
+  const scale = targetSize / size;
   obj.scale.setScalar(scale);
   const center = box.getCenter(new THREE.Vector3()).multiplyScalar(scale);
   obj.position.sub(center);
-  rig.add(obj);
 }
 
 // ---------- shot list: one per section, a deliberate flight move rather than a spin ----------
 const shots = [
-  { pos: { x: 0, y: 0, z: 0 }, rot: { x: 0, y: 0, z: 0 }, cam: { x: 0, y: 0.3, z: 6 } },
+  { pos: { x: 0, y: 0, z: 0 }, rot: { x: 0, y: 0, z: 0 }, cam: { x: 0, y: 0.15, z: 3.0 } },
   { pos: { x: 0.3, y: -0.05, z: 0 }, rot: { x: -0.1, y: 0.65, z: 0.2 }, cam: { x: 0.5, y: 0.4, z: 5.0 } },
   { pos: { x: 0.35, y: -0.1, z: 0 }, rot: { x: -0.22, y: 1.3, z: 0.35 }, cam: { x: 0.7, y: 0.55, z: 4.7 } },
   { pos: { x: 0.1, y: -0.08, z: 0.15 }, rot: { x: -0.05, y: 1.9, z: 0.15 }, cam: { x: 0.3, y: 0.35, z: 4.3 } },
-  { pos: { x: -0.3, y: 0.15, z: 0.1 }, rot: { x: 0.06, y: 2.5, z: -0.28 }, cam: { x: -0.5, y: 0.2, z: 4.2 } },
-  { pos: { x: -0.3, y: 0.15, z: 0 }, rot: { x: 0.1, y: 3.1, z: -0.32 }, cam: { x: -0.55, y: 0.1, z: 4.0 } },
-  { pos: { x: 0, y: -0.05, z: 0.2 }, rot: { x: 0, y: 3.8, z: 0.08 }, cam: { x: 0, y: 0.15, z: 2.5 } },
-  { pos: { x: 0, y: 0, z: 0 }, rot: { x: 0, y: 4.5, z: 0 }, cam: { x: 0, y: 0.4, z: 5.3 } },
+  { pos: { x: -0.3, y: 0.15, z: 0 }, rot: { x: 0.1, y: 2.5, z: -0.32 }, cam: { x: -0.55, y: 0.1, z: 4.0 } },
+  { pos: { x: 0, y: -0.05, z: 0.2 }, rot: { x: 0, y: 3.3, z: 0.08 }, cam: { x: 0, y: 0.15, z: 2.5 } },
+  { pos: { x: 0, y: 0, z: 0 }, rot: { x: 0, y: 4.0, z: 0 }, cam: { x: 0, y: 0.4, z: 5.3 } },
 ];
 
 const target = {
   pos: { x: 0, y: 0, z: 0 },
   rot: { x: 0, y: 0, z: 0 },
-  cam: { x: 0, y: 0.3, z: 6 },
+  cam: { x: 0, y: 0.15, z: 3.0 },
 };
 
 // one entry per shot/section, in the same order: 0 = dark, 1 = light.
 // The scroll handler blends continuously between these — same mechanism as the
 // flight path above, so the theme and the camera move in perfect lockstep.
-const themeStops = [0, 1, 0, 1, 0, 1, 0, 1];
+const themeStops = [0, 1, 0, 1, 0, 1, 0];
 
 // ---------- tiny critically-damped spring system ----------
 function makeSpring(initial) {
@@ -234,7 +323,7 @@ function lerp(a, b, t) {
 const springs = {
   posX: makeSpring(0), posY: makeSpring(0), posZ: makeSpring(0),
   rotX: makeSpring(0), rotY: makeSpring(0), rotZ: makeSpring(0),
-  camX: makeSpring(0), camY: makeSpring(0.3), camZ: makeSpring(6),
+  camX: makeSpring(0), camY: makeSpring(0.15), camZ: makeSpring(3.0),
 };
 const OMEGA_POSITION = 9;
 const OMEGA_ROTATION = 7;
@@ -323,6 +412,10 @@ ScrollTrigger.create({
     const themeValue = lerp(themeStops[i], themeStops[i + 1], localT);
     applyThemeBlend(themeValue);
 
+    // the realistic hangar-photo look only lives in the first sliver of scroll —
+    // as soon as you start moving through the page it hands off to the fresnel glow
+    setHeroMode(p < 0.045);
+
     tmAlt.textContent = Math.round(p * 120).toString().padStart(3, '0');
     tmMoist.textContent = Math.round(20 + p * 60).toString().padStart(2, '0');
     const stageIndex = Math.min(statusStages.length - 1, Math.floor(p * statusStages.length));
@@ -384,6 +477,7 @@ function animate() {
 }
 sizeRenderer();
 applyThemeBlend(0);
+setHeroMode(true);
 animate();
 
 // ---------- resize ----------
