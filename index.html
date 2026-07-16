@@ -11,6 +11,19 @@
 </head>
 <body>
 
+  <!-- Fixed top nav — sits above everything, its own tone inverts in lockstep with
+       the aircraft/viewport theme blend (see applyThemeBlend in main.js). -->
+  <nav id="site-nav">
+    <span class="nav-brand">AQUILA-7</span>
+    <div class="nav-links">
+      <a class="nav-link" href="#welcome">Welcome</a>
+      <a class="nav-link" href="#learn-more">Learn More</a>
+      <a class="nav-link" href="#video">Video</a>
+      <a class="nav-link" href="#coverage">Coverage</a>
+      <a class="nav-link nav-link-repo" href="https://github.com/your-username/aquila-7-showcase" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </nav>
+
   <!-- Fixed WebGL viewport, left half of the screen on desktop. Its background and the
        aircraft material both invert to match whichever text section is currently active. -->
   <div id="viewport">
@@ -30,7 +43,7 @@
   <!-- Scrolling text column, right half on desktop. Each section declares its own theme. -->
   <main>
 
-    <section class="panel hero theme-dark" data-theme="dark">
+    <section class="panel hero theme-dark" data-theme="dark" id="welcome">
       <div class="reveal">
         <p class="eyebrow">INTRODUCING</p>
         <h1>AQUILA-7</h1>
@@ -73,7 +86,24 @@
       </div>
     </section>
 
-    <section class="panel map-impact theme-light" data-theme="light">
+    <section class="panel video-section theme-light" data-theme="light" id="video">
+      <div class="reveal">
+        <p class="eyebrow">IN ACTION</p>
+        <h2>See it fly.</h2>
+        <div class="video-frame" id="video-frame">
+          <video id="showcase-video" class="showcase-video" controls playsinline preload="metadata">
+            <source src="flight-demo.mp4" type="video/mp4" />
+          </video>
+          <div class="video-placeholder" id="video-placeholder">
+            <span class="video-placeholder-label">FOOTAGE COMING SOON</span>
+            <span class="video-placeholder-sub">Drop a file named flight-demo.mp4 in the repo root and this player picks it up automatically.</span>
+          </div>
+        </div>
+        <p class="body-text">Real flight footage, once it exists — rendered in grayscale to stay on-brand with the rest of the page.</p>
+      </div>
+    </section>
+
+    <section class="panel map-impact theme-dark" data-theme="dark" id="coverage">
       <div class="reveal">
         <p class="eyebrow">COVERAGE</p>
         <h2>Watching the valley,<br>field by field.</h2>
@@ -100,7 +130,7 @@
       </div>
     </section>
 
-    <section class="panel sim theme-dark" data-theme="dark">
+    <section class="panel sim theme-light" data-theme="light" id="learn-more">
       <div class="reveal">
         <p class="eyebrow">SIMULATED FIRST</p>
         <h2>Every flight is rehearsed<br>before it's real.</h2>
@@ -108,7 +138,7 @@
       </div>
     </section>
 
-    <section class="panel specs theme-light" data-theme="light">
+    <section class="panel specs theme-dark" data-theme="dark">
       <div class="reveal">
         <p class="eyebrow">CAPABILITIES</p>
         <div class="spec-grid">
@@ -120,7 +150,7 @@
       </div>
     </section>
 
-    <section class="panel closing theme-dark" data-theme="dark">
+    <section class="panel closing theme-light" data-theme="light">
       <div class="reveal">
         <h2>Dry ground first.<br>Every time.</h2>
         <p class="body-text">AQUILA-7 is an ongoing build. Follow the project or dig into the simulation source below.</p>
