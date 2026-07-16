@@ -92,6 +92,12 @@ h1, h2, h3 {
   animation: nav-prop-spin 1.1s linear infinite;
   transform-origin: 50% 50%;
 }
+.nav-prop-canvas {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  display: block;
+}
 @keyframes nav-prop-spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
