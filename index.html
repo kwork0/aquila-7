@@ -14,7 +14,17 @@
   <!-- Fixed top nav — sits above everything, its own tone inverts in lockstep with
        the aircraft/viewport theme blend (see applyThemeBlend in main.js). -->
   <nav id="site-nav">
-    <span class="nav-brand">AQUILA-7</span>
+    <span class="nav-brand">
+      AQUILA-7
+      <svg class="nav-prop-icon" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+        <g fill="currentColor">
+          <ellipse cx="12" cy="7" rx="2" ry="5.2"/>
+          <ellipse cx="12" cy="7" rx="2" ry="5.2" transform="rotate(120 12 12)"/>
+          <ellipse cx="12" cy="7" rx="2" ry="5.2" transform="rotate(240 12 12)"/>
+          <circle cx="12" cy="12" r="1.7"/>
+        </g>
+      </svg>
+    </span>
     <div class="nav-links">
       <a class="nav-link" href="#welcome">Welcome</a>
       <a class="nav-link" href="#learn-more">Learn More</a>
@@ -127,7 +137,10 @@
       <div class="reveal">
         <h2>Dry ground first.<br>Every time.</h2>
         <p class="body-text">AQUILA-7 is an ongoing build. Follow the project or dig into the simulation source below.</p>
-        <a class="cta" href="#" id="repo-link">VIEW ON GITHUB</a>
+        <div class="cta-row">
+          <a class="cta" href="#" id="repo-link">VIEW ON GITHUB</a>
+          <a class="cta cta-secondary" href="https://www.linkedin.com/in/kevin-melgar0/" target="_blank" rel="noopener">CONTACT — LINKEDIN</a>
+        </div>
       </div>
     </section>
 
